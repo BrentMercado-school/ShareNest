@@ -1,5 +1,6 @@
 from rest_framework import serializers, generics
 from django.contrib.auth.hashers import make_password, check_password
+from rest_framework.response import Response
 
 from api.models import Category, User, Item
 
@@ -22,4 +23,46 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = '__all__'
         read_only_fields = ["id", "createdAt"]
+
+class RegisterUserSerializer(serializers.ModelSerializer):
+    name = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = '__all__'
+        read_only_fields = ["id", "createdAt"]
+
+    def create(self, validated_data):
+        validated_data["password"] = make_password(validated_data["password"])
+        return User.objects.create(**validated_data)
+
+class LoginUserSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        name = attrs.get("name")
+        password = attrs.get("password")
+
+        try:
+            existing_user = User.objects.get(name=name)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User not found")
+
+        if not check_password(password, existing_user.password):
+            raise serializers.ValidationError("Incorrect password")
+
+        attrs["user"] = existing_user
+        return attrs
+
+
+
+
+
+
+
+
+
+
 
